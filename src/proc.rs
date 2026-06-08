@@ -355,8 +355,8 @@ pub struct ProcessHandle<T> {
     pub(crate) state: Arc<ProcessHandleState>,
 }
 
-fn is_ipc_timeout(err: &ipc_channel::ipc::TryRecvError) -> bool {
-    matches!(err, ipc_channel::ipc::TryRecvError::Empty)
+fn is_ipc_timeout(err: &ipc_channel::TryRecvError) -> bool {
+    matches!(err, ipc_channel::TryRecvError::Empty)
 }
 
 impl<T> ProcessHandle<T> {

@@ -1,8 +1,8 @@
 use std::fmt;
 use std::io;
 
-use ipc_channel::ipc::{IpcError, TryRecvError};
-use ipc_channel::{Error as BincodeError, ErrorKind as BincodeErrorKind};
+use ipc_channel::SerDeError as BincodeError;
+use ipc_channel::{IpcError, TryRecvError};
 use serde::{Deserialize, Serialize};
 
 /// Represents a panic caugh across processes.
@@ -159,6 +159,12 @@ impl SpawnError {
         matches!(self.kind, SpawnErrorKind::IpcChannelClosed(..))
     }
 
+    pub(crate) fn new_bincode(err: BincodeError) -> SpawnError {
+        SpawnError {
+            kind: SpawnErrorKind::Bincode(err),
+        }
+    }
+
     pub(crate) fn new_remote_close() -> SpawnError {
         SpawnError {
             kind: SpawnErrorKind::IpcChannelClosed(io::Error::new(
@@ -218,18 +224,6 @@ impl fmt::Display for SpawnError {
     }
 }
 
-impl From<BincodeError> for SpawnError {
-    fn from(err: BincodeError) -> SpawnError {
-        // unwrap nested IO errors
-        if let BincodeErrorKind::Io(io_err) = *err {
-            return SpawnError::from(io_err);
-        }
-        SpawnError {
-            kind: SpawnErrorKind::Bincode(err),
-        }
-    }
-}
-
 impl From<TryRecvError> for SpawnError {
     fn from(err: TryRecvError) -> SpawnError {
         match err {
@@ -243,8 +237,8 @@ impl From<IpcError> for SpawnError {
     fn from(err: IpcError) -> SpawnError {
         // unwrap nested IO errors
         match err {
+            IpcError::SerializationError(err) => SpawnError::new_bincode(err),
             IpcError::Io(err) => SpawnError::from(err),
-            IpcError::Bincode(err) => SpawnError::from(err),
             IpcError::Disconnected => SpawnError::new_remote_close(),
         }
     }
